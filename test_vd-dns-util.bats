@@ -74,19 +74,19 @@ SCRIPT
 # find_first_record()のテスト
 # ========================================
 @test "find_first_record: 一致するレコードがあればその行を返す" {
-    local records='a www 192.168.1.1\na mail 192.168.1.2\ncname ftp www.example.com.'
+    local records=$'a www 192.168.1.1\na mail 192.168.1.2\ncname ftp www.example.com.'
     result=$(find_first_record "$records" "a www")
     [ "$result" = "a www 192.168.1.1" ]
 }
 
 @test "find_first_record: 先頭一致で検索する" {
-    local records='a www 192.168.1.1\na www2 192.168.1.3\ncname ftp www.example.com.'
+    local records=$'a www 192.168.1.1\na www2 192.168.1.3\ncname ftp www.example.com.'
     result=$(find_first_record "$records" "a www2")
     [ "$result" = "a www2 192.168.1.3" ]
 }
 
 @test "find_first_record: 一致するレコードがなければ空文字を返す" {
-    local records='a www 192.168.1.1\na mail 192.168.1.2\ncname ftp www.example.com.'
+    local records=$'a www 192.168.1.1\na mail 192.168.1.2\ncname ftp www.example.com.'
     result=$(find_first_record "$records" "txt _acme")
     [ "$result" = "" ]
 }
@@ -98,13 +98,13 @@ SCRIPT
 }
 
 @test "find_first_record: 複数一致する場合は一番先頭の一件を返す" {
-    local records='a www 192.168.1.1\na www 192.168.1.2\ncname ftp www.example.com.'
+    local records=$'a www 192.168.1.1\na www 192.168.1.2\ncname ftp www.example.com.'
     result=$(find_first_record "$records" "a www")
     [ "$result" = "a www 192.168.1.1" ]
 }
 
 @test "find_first_record: txtレコードの検索" {
-    local records='a www 192.168.1.1\ntxt _acme-challenge abc123\na mail 10.0.0.1'
+    local records=$'a www 192.168.1.1\ntxt _acme-challenge abc123\na mail 10.0.0.1'
     result=$(find_first_record "$records" "txt _acme-challenge")
     [ "$result" = "txt _acme-challenge abc123" ]
 }
@@ -113,52 +113,51 @@ SCRIPT
 # append_record()のテスト
 # ========================================
 @test "append_record: レコードを末尾に追加できる" {
-    local records='"a www 192.168.1.1\n"'
+    local records='a www 192.168.1.1'
     local new_record="a mail 192.168.1.2"
     result=$(append_record "$records" "$new_record")
-    # 末尾の " の直前にレコードを追加して \n で区切り、最後に " を閉じる
-    [ "$result" = '"a www 192.168.1.1\na mail 192.168.1.2\n"' ]
+    [ "$result" = $'a www 192.168.1.1\na mail 192.168.1.2' ]
 }
 
 @test "append_record: 複数行あるレコードに追加できる" {
-    local records='"a www 192.168.1.1\na mail 192.168.1.2\n"'
+    local records=$'a www 192.168.1.1\na mail 192.168.1.2'
     local new_record="cname ftp www.example.com."
     result=$(append_record "$records" "$new_record")
-    [ "$result" = '"a www 192.168.1.1\na mail 192.168.1.2\ncname ftp www.example.com.\n"' ]
+    [ "$result" = $'a www 192.168.1.1\na mail 192.168.1.2\ncname ftp www.example.com.' ]
 }
 
 @test "append_record: txtレコードを追加できる" {
-    local records='"a www 192.168.1.1\n"'
-    local new_record="txt _acme-challenge \\\"abcdef12345\\\""
+    local records='a www 192.168.1.1'
+    local new_record="txt _acme-challenge \"abcdef12345\""
     result=$(append_record "$records" "$new_record")
-    [ "$result" = '"a www 192.168.1.1\ntxt _acme-challenge \"abcdef12345\"\n"' ]
+    [ "$result" = $'a www 192.168.1.1\ntxt _acme-challenge "abcdef12345"' ]
 }
 
 # ========================================
 # replace_record()のテスト
 # ========================================
 @test "replace_record: 既存レコードを置換できる" {
-    local records='"a www 192.168.1.1\na mail 192.168.1.2\n"'
+    local records=$'a www 192.168.1.1\na mail 192.168.1.2'
     local subject="a mail"
     local replacement="a mail 10.0.0.1"
     result=$(replace_record "$records" "$subject" "$replacement")
-    [ "$result" = '"a www 192.168.1.1\na mail 10.0.0.1\n"' ]
+    [ "$result" = $'a www 192.168.1.1\na mail 10.0.0.1' ]
 }
 
 @test "replace_record: 置換対象が見つからなければ元のまま" {
-    local records='"a www 192.168.1.1\na mail 192.168.1.2\n"'
+    local records=$'a www 192.168.1.1\na mail 192.168.1.2'
     local subject="cname ftp"
     local replacement="cname ftp www.example.com."
     result=$(replace_record "$records" "$subject" "$replacement")
-    [ "$result" = '"a www 192.168.1.1\na mail 192.168.1.2\n"' ]
+    [ "$result" = $'a www 192.168.1.1\na mail 192.168.1.2' ]
 }
 
 @test "replace_record: txtレコードの値を更新できる" {
-    local records='"a www 192.168.1.1\ntxt _acme-challenge oldvalue\n"'
+    local records=$'a www 192.168.1.1\ntxt _acme-challenge oldvalue'
     local subject="txt _acme-challenge"
     local replacement="txt _acme-challenge newvalue"
     result=$(replace_record "$records" "$subject" "$replacement")
-    [ "$result" = '"a www 192.168.1.1\ntxt _acme-challenge newvalue\n"' ]
+    [ "$result" = $'a www 192.168.1.1\ntxt _acme-challenge newvalue' ]
 }
 
 # ========================================

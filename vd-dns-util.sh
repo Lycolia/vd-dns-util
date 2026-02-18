@@ -32,7 +32,7 @@ find_first_record() {
     local records=$1
     local subject=$2
 
-    find_record=$(echo -E "$records" | sed 's/\\n/\n/g' | grep "^$subject.*" | head -1)
+    find_record=$(echo "$records" | grep "^$subject" | head -1)
 
     echo "$find_record"
 }
@@ -46,8 +46,9 @@ find_first_record() {
 append_record() {
     local records=$1
     local record=$2
-    # 後方一致除去 ${parameter%word}
-    new_records=$(echo "${records%?}$record\\n\"")
+
+    # $'\n'と書くことでコード中で実際に改行せずとも、改行した扱いにできる
+    new_records=$(echo -n "$records"$'\n'"$record")
 
     echo "$new_records"
 }
@@ -64,8 +65,8 @@ replace_record() {
     local subject=$2
     local replacement=$3
 
-    escaped_replacement=$(echo -E "$replacement" | sed 's/[&/\\]/\\&/g')
-    new_records=$(echo "$(echo -E "$records" | sed 's/\\n/\n/g' | sed -E "s/^$subject.+/$escaped_replacement/")" | sed ':a;N;$!ba;s/\n/\\n/g')
+    escaped_replacement=$(echo "$replacement" | sed 's/[&/\\]/\\&/g')
+    new_records=$(echo "$records" | sed -E "s/^$subject.+/$escaped_replacement/")
 
     echo "$new_records"
 }

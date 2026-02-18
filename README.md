@@ -73,7 +73,7 @@ Value-DomainのDNSレコードのレコードを検索し、一致した先頭�
 **実装例**
 
 ```bash
-exists_record=$(find_record "$records" "txt $CERTBOT_DOMAIN")
+exists_record=$(find_first_record "$records" "txt $CERTBOT_DOMAIN")
 
 if [[ -z "$exists_record" ]]; then
   # レコードがなかった時の処理
@@ -207,7 +207,7 @@ fi
 sudo certbot certonly --manual -n \
   --preferred-challenges dns \
   --agree-tos -m <your-email> \
-  --manual-auth-hook "vddcr <root-domain> <value-domain-api-key>" \
+  --manual-auth-hook "vddcr <value-domain-api-key> <root-domain> <optional:ttl>" \
   -d <target-domain>
 ```
 
