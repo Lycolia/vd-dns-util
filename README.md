@@ -4,7 +4,7 @@
 
 ## [`./vd-dns-util.sh`] ユーティリティ関数群の本体
 
-`./examples/vd-dcr.sh`にあるように`source vd-dns-util.sh`して利用する想定。
+`./vd-dcr.sh`にあるように`source vd-dns-util.sh`して利用する想定。
 
 ### 実装関数
 
