@@ -8,7 +8,8 @@
 # これはValue-Domain APIの仕様上、120未満を指定すると、3600が割り当てられるため
 # 最短の120を割り当てるようにしている
 
-source vd-dns-util.sh
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+source "${SCRIPT_DIR}/vd-dns-util.sh"
 
 apikey=$1
 root_domain=$2
