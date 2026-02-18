@@ -45,8 +45,8 @@ echo "$get_result"
 get_respcode=$(echo -E "$get_result" | tail -1)
 get_respbody=$(echo -E "$get_result" | head -1)
 if [[ $get_respcode -ne 200 ]]; then
-  echo -e "CODE:$get_respcode\tDNSレコードの取得に失敗しました。"
-  echo "$get_respbody"
+  echo -e "CODE:$get_respcode\tDNSレコードの取得に失敗しました。" >&2
+  echo "$get_respbody" >&2
   exit 10
 fi
 
@@ -84,8 +84,8 @@ update_result=$(request_update_records "$apikey" "$root_domain" "$json")
 update_respcode=$(echo -E "$update_result" | tail -1)
 update_respbody=$(echo -E "$update_result" | head -1)
 if [[ $update_respcode -ne 200 ]]; then
-  echo -e "CODE:$update_respcode\tDNSレコードの更新に失敗しました。"
-  echo "$update_respbody"
+  echo -e "CODE:$update_respcode\tDNSレコードの更新に失敗しました。" >&2
+  echo "$update_respbody" >&2
   exit 11
 fi
 
