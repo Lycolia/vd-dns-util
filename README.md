@@ -37,16 +37,16 @@ echo "=== INPUT ==="
 echo "$get_result"
 
 get_respcode=$(echo -E "$get_result" | tail -1)
+get_respbody=$(echo -E "$get_result" | head -1)
 if [[ $get_respcode -ne 200 ]]; then
-  echo -e "CODE:$get_respcode\tDNSレコードの取得に失敗しました。"
-  echo "$update_respbody"
+  echo -e "CODE:$get_respcode\tDNSレコードの取得に失敗しました。" >&2
+  echo "$get_respbody" >&2
   exit 10
 fi
-get_respbody=$(echo -E "$get_result" | head -1)
 
-records=$(echo -E "$get_respbody" | jq '.results.records')
-ttl=$(echo -E "$get_respbody" | jq -r '.results.ttl')
-ns_type=$(echo -E "$get_respbody" | jq '.results.ns_type')
+source_records=$(echo -E "$get_respbody" | jq -r '.results.records')
+source_ttl=$(echo -E "$get_respbody" | jq -r '.results.ttl')
+source_ns_type=$(echo -E "$get_respbody" | jq -r '.results.ns_type')
 ```
 
 #### `find_first_record()`
@@ -126,7 +126,7 @@ Value-DomainのDNSレコードデータ（records）にあるレコードを置�
 **実装例**
 
 ```bash
-new_record="txt $CERTBOT_DOMAIN \\\"$CERTBOT_VALIDATION\\\""
+new_record="txt $acme_domain \"$CERTBOT_VALIDATION\""
 new_records=$(replace_record "$source_records" "txt $CERTBOT_DOMAIN" "$new_record")
 ```
 
@@ -182,7 +182,13 @@ Value-DomainのDNS APIに指定ドメインのDNSレコード更新の要求行�
 **実装例**
 
 ```bash
-json="{\"ns_type\":$source_ns_type,\"records\":$new_records,\"ttl\":$adjusted_ttl}"
+json=$(
+  echo "$new_records" \
+    | jq -Rs \
+      --arg ns_type "$source_ns_type" \
+      --argjson ttl "$adjusted_ttl" \
+      '{"ns_type": $ns_type, "records": ., "ttl": $ttl}'
+)
 # ValueDomainAPIにレコードの更新要求を出す
 update_result=$(request_update_records "$apikey" "$root_domain" "$json")
 
