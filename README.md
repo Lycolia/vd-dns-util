@@ -211,7 +211,7 @@ Claude Opus 4.6のレビューによるとFreeBSD系では動かない可能性�
    ```bash
    sudo apt install certbot jq
    ```
-2. 本リポジトリの中身を任意の場所に展開する
+2. 本リポジトリの中身を任意の場所に展開し、適切な実行権限を付与する
 3. 証明書を作るためのコマンドを叩く
    ```bash
    sudo certbot certonly --manual -n \
