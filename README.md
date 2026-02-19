@@ -1,14 +1,25 @@
 # Value-Domain DNS API Utility for Perl
 
-[Value-DomainのDNS API](https://www.value-domain.com/api/doc/domain/#tag/DNS)をPerlから叩くためのユーティリティ関数群。
+[Value-DomainのDNS API](https://www.value-domain.com/api/doc/domain/#tag/DNS)をPerlから叩くためのユーティリティ関数群、ツールキット。
 
-## 必要なモジュール
+## モジュールについて
 
-すべてPerlコアモジュール（Perl 5.14以降）のため、追加インストール不要。
+基本的にPerlの組み込みモジュールの実を利用しているため、Perl 5.14以上なら動くと思われる。
+
+### 必須モジュール
+
+`vd-dns-util.pl`本体に必要なもの。
 
 | モジュール   | 用途                      | コア収録バージョン |
 | ------------ | ------------------------- | ------------------ |
 | `HTTP::Tiny` | HTTPリクエスト            | Perl 5.14          |
+
+### 推奨モジュール
+
+`vd-dcr.pl`を動かすのに必要なもの。ツールを自作するときにあると便利。
+
+| モジュール   | 用途                      | コア収録バージョン |
+| ------------ | ------------------------- | ------------------ |
 | `JSON::PP`   | JSONのエンコード/デコード | Perl 5.14          |
 | `FindBin`    | スクリプトのパス解決      | Perl 5.004         |
 | `Test::More` | テスト                    | Perl 5.004         |
@@ -207,7 +218,7 @@ if ($update_code != 200) {
 
 ### 動作確認環境
 
-- Ubuntu 24.04.3 LTS, certbot 2.9.0, Perl 5.38
+- Ubuntu 24.04.3 LTS, certbot 2.9.0, Perl 5.38.2
 
 ### 使い方
 
