@@ -4,7 +4,7 @@
 
 ## [`./vd-dns-util.sh`] ユーティリティ関数群の本体
 
-`./examples/vd-dcr.sh`にあるように`source vd-dns-util.sh`して利用する想定。
+`./vd-dcr.sh`にあるように`source vd-dns-util.sh`して利用する想定。
 
 ### 実装関数
 
@@ -213,11 +213,12 @@ Claude Opus 4.6のレビューによるとFreeBSD系では動かない可能性�
 
 ### 使い方
 
-1. certbotがない場合インストールする
+1. certbotやjqがない場合インストールする
    ```bash
-   sudo apt install certbot
+   sudo apt install certbot jq
    ```
-2. 証明書を作るためのコマンドを叩く
+2. 本リポジトリの中身を任意の場所に展開し、適切な実行権限を付与する
+3. 証明書を作るためのコマンドを叩く
    ```bash
    sudo certbot certonly --manual -n \
      --preferred-challenges dns \
