@@ -1,109 +1,117 @@
-# Value-Domain DNS API Utility for Bash
+# Value-Domain DNS API Utility for Perl
 
-[Value-DomainのDNS API](https://www.value-domain.com/api/doc/domain/#tag/DNS)をBashのshellscriptから叩くためのユーティリティ関数群。
+[Value-DomainのDNS API](https://www.value-domain.com/api/doc/domain/#tag/DNS)をPerlから叩くためのユーティリティ関数群。
 
-## [`./vd-dns-util.sh`] ユーティリティ関数群の本体
+## 必要なモジュール
 
-`./vd-dcr.sh`にあるように`source vd-dns-util.sh`して利用する想定。
+すべてPerlコアモジュール（Perl 5.14以降）のため、追加インストール不要。
+
+| モジュール   | 用途                      | コア収録バージョン |
+| ------------ | ------------------------- | ------------------ |
+| `HTTP::Tiny` | HTTPリクエスト            | Perl 5.14          |
+| `JSON::PP`   | JSONのエンコード/デコード | Perl 5.14          |
+| `FindBin`    | スクリプトのパス解決      | Perl 5.004         |
+| `Test::More` | テスト                    | Perl 5.004         |
+
+## [`./vd-dns-util.pl`] ユーティリティ関数群の本体
+
+`./vd-dcr.pl`にあるように`require`して利用する想定。
+
+```perl
+use FindBin qw($Bin);
+require "$Bin/vd-dns-util.pl";
+```
 
 ### 実装関数
 
-#### `request_get_records()`
+#### `request_get_records($apikey, $root_domain)`
 
 Value-DomainのDNS APIに指定ドメインのDNSレコード設定の問い合わせを行い当該ドメインのDNSレコード設定を取得する。
 
 **引数**
 
-| 順番 | 意味合い                  |
-| ---- | ------------------------- |
-| `$1` | Value-DomainのAPIトークン |
-| `$2` | ルートドメイン            |
+| 変数名         | 意味合い                  |
+| -------------- | ------------------------- |
+| `$apikey`      | Value-DomainのAPIトークン |
+| `$root_domain` | ルートドメイン            |
 
 **戻り値**
 
-複数行の標準出力をするので、`head`や`tail`で取得して使う。
+リストで `($body, $code)` を返す。
 
-| 行数 | 意味合い                            | 備考                                                              |
-| ---- | ----------------------------------- | ----------------------------------------------------------------- |
-| 1    | APIのレスポンスボディ(JSON)         | 一行の文字列で、改行コードは`\\n`としてエスケープされたものが来る |
-| 2    | APIのHTTPレスポンスステータスコード |                                                                   |
+| 変数名  | 意味合い                            | 備考 |
+| ------- | ----------------------------------- | ---- |
+| `$body` | APIのレスポンスボディ(JSON文字列)   |      |
+| `$code` | APIのHTTPレスポンスステータスコード |      |
 
 **実装例**
 
-```bash
-get_result=$(request_get_records "$apikey" "$root_domain")
+```perl
+my ($get_body, $get_code) = request_get_records($apikey, $root_domain);
 
-echo "=== INPUT ==="
-echo "$get_result"
+if ($get_code != 200) {
+    print STDERR "CODE:$get_code\tDNSレコードの取得に失敗しました。\n";
+    exit 10;
+}
 
-get_respcode=$(echo -E "$get_result" | tail -1)
-get_respbody=$(echo -E "$get_result" | head -1)
-if [[ $get_respcode -ne 200 ]]; then
-  echo -e "CODE:$get_respcode\tDNSレコードの取得に失敗しました。" >&2
-  echo "$get_respbody" >&2
-  exit 10
-fi
-
-source_records=$(echo -E "$get_respbody" | jq -r '.results.records')
-source_ttl=$(echo -E "$get_respbody" | jq -r '.results.ttl')
-source_ns_type=$(echo -E "$get_respbody" | jq -r '.results.ns_type')
+use JSON::PP;
+my $json         = decode_json($get_body);
+my $records      = $json->{results}{records};
+my $ttl          = $json->{results}{ttl};
+my $ns_type      = $json->{results}{ns_type};
 ```
 
-#### `find_first_record()`
+#### `find_first_record($records, $subject)`
 
 Value-DomainのDNSレコードのレコードを検索し、一致した先頭一件を取得する。
 
 **引数**
 
-| 順番 | 意味合い                                | 備考           |
-| ---- | --------------------------------------- | -------------- |
-| `$1` | APIのレスポンスにある`.results.records` |                |
-| `$2` | 検索するレコード文字列（先頭一致）      | `txt hoge`など |
+| 変数名     | 意味合い                                | 備考           |
+| ---------- | --------------------------------------- | -------------- |
+| `$records` | APIのレスポンスにある`.results.records` |                |
+| `$subject` | 検索するレコード文字列（先頭一致）      | `txt hoge`など |
 
 **戻り値**
 
-| 行数 | 意味合い | 備考                                                       |
-| ---- | -------- | ---------------------------------------------------------- |
-| 1    | 検索結果 | 一致したものがあれば、その最初のレコード行、なければ空文字 |
+一致したものがあれば、その最初のレコード行。なければ空文字。
 
 **実装例**
 
-```bash
-exists_record=$(find_first_record "$records" "txt $CERTBOT_DOMAIN")
+```perl
+my $exists = find_first_record($records, "txt $certbot_domain");
 
-if [[ -z "$exists_record" ]]; then
-  # レコードがなかった時の処理
-else
-  # レコードがあった時の処理
-fi
+if ($exists eq '') {
+    # レコードがなかった時の処理
+} else {
+    # レコードがあった時の処理
+}
 ```
 
-#### `append_record()`
+#### `append_record($records, $record)`
 
 Value-DomainのDNSレコードデータ（records）にレコードを追加する。
 
 **引数**
 
-| 順番 | 意味合い                                | 備考                                                                                                      |
-| ---- | --------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `$1` | APIのレスポンスにある`.results.records` |                                                                                                           |
-| `$2` | 追加するレコード行文字列                | TXTレコードは以下のようにダブルクォートのエスケープが必要<br />`txt hoge \\\"$CERTBOT_VALIDATION\\\"`など |
+| 変数名     | 意味合い                                |
+| ---------- | --------------------------------------- |
+| `$records` | APIのレスポンスにある`.results.records` |
+| `$record`  | 追加するレコード行文字列                |
 
 **戻り値**
 
-| 行数 | 意味合い                         | 備考 |
-| ---- | -------------------------------- | ---- |
-| 1    | `$1`の末尾に`$2`を結合した文字列 |      |
+`$records`の末尾に`$record`を追加した文字列。
 
 **実装例**
 
-```bash
-# $recordsの中身はDNS APIの.results.records
-# $recordの中身はDNSレコード一行分
-new_records=$(append_record "$records" "$record")
+```perl
+# $records はDNS APIの .results.records
+# $record はDNSレコード一行分
+my $new_records = append_record($records, $record);
 ```
 
-#### `replace_record()`
+#### `replace_record($records, $subject, $replacement)`
 
 Value-DomainのDNSレコードデータ（records）にあるレコードを置換する。
 
@@ -111,119 +119,112 @@ Value-DomainのDNSレコードデータ（records）にあるレコードを置�
 
 **引数**
 
-| 順番 | 意味合い                                | 備考                                                                                                      |
-| ---- | --------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `$1` | APIのレスポンスにある`.results.records` |                                                                                                           |
-| `$2` | 検索文字列（先頭一致）                  | `txt hoge"`など                                                                                           |
-| `$3` | 置換するレコード                        | TXTレコードは以下のようにダブルクォートのエスケープが必要<br />`txt hoge \\\"$CERTBOT_VALIDATION\\\"`など |
+| 変数名         | 意味合い                                |
+| -------------- | --------------------------------------- |
+| `$records`     | APIのレスポンスにある`.results.records` |
+| `$subject`     | 検索文字列（先頭一致）                  |
+| `$replacement` | 置換するレコード行                      |
 
 **戻り値**
 
-| 行数 | 意味合い                                                 | 備考 |
-| ---- | -------------------------------------------------------- | ---- |
-| 1    | `$1`の中にある`$2`で始まるレコードを`$3`で置換した文字列 |      |
+`$records`の中にある`$subject`で始まるレコードを`$replacement`で置換した文字列。
 
 **実装例**
 
-```bash
-new_record="txt $acme_domain \"$CERTBOT_VALIDATION\""
-new_records=$(replace_record "$source_records" "txt $CERTBOT_DOMAIN" "$new_record")
+```perl
+my $new_record  = qq(txt $acme_domain "$certbot_validation");
+my $new_records = replace_record($source_records, "txt $acme_domain", $new_record);
 ```
 
-#### `adjust_ttl()`
+#### `adjust_ttl($ttl)`
 
 ttlが120未満であれば120に補正し、そうでなければそのままを返す。
 
 これはValue-Domain APIの仕様上、ttlに120未満を指定すると、3600が割り当てられるため、最短の120を割り当てるようにするための補助関数である。
 
-| 順番 | 意味合い  | 備考 |
-| ---- | --------- | ---- |
-| `$1` | ttlの秒数 |      |
+**引数**
+
+| 変数名 | 意味合い  |
+| ------ | --------- |
+| `$ttl` | ttlの秒数 |
 
 **戻り値**
 
-| 行数 | 意味合い                                 | 備考 |
-| ---- | ---------------------------------------- | ---- |
-| 1    | `$1`が120未満なら120、そうでなければ`$1` |      |
+`$ttl`が120未満なら120、そうでなければ`$ttl`。
 
 **実装例**
 
-```bash
-source_ttl=60
-# この場合120
-adjusted_ttl=$(adjust_ttl $source_ttl)
+```perl
+my $source_ttl   = 60;
+my $adjusted_ttl = adjust_ttl($source_ttl);  # => 120
 
-source_ttl=130
-# この場合130
-adjusted_ttl=$(adjust_ttl $source_ttl)
+my $source_ttl   = 130;
+my $adjusted_ttl = adjust_ttl($source_ttl);  # => 130
 ```
 
-#### `request_update_records()`
+#### `request_update_records($apikey, $root_domain, $json)`
 
 Value-DomainのDNS APIに指定ドメインのDNSレコード更新の要求行い当該ドメインのDNSレコード設定を更新する。
 
 **引数**
 
-| 順番 | 意味合い                  | 備考                                                                           |
-| ---- | ------------------------- | ------------------------------------------------------------------------------ |
-| `$1` | Value-DomainのAPIトークン |                                                                                |
-| `$2` | ルートドメイン            |                                                                                |
-| `$3` | 更新データのJSON          | 中身の書式は`"{\"ns_type\":"<文字列>",\"records\":"<文字列>",\"ttl\":<数値>}"` |
+| 変数名         | 意味合い                  | 備考                                                              |
+| -------------- | ------------------------- | ----------------------------------------------------------------- |
+| `$apikey`      | Value-DomainのAPIトークン |                                                                   |
+| `$root_domain` | ルートドメイン            |                                                                   |
+| `$json`        | 更新データのJSON文字列    | `{"ns_type":"<文字列>","records":"<文字列>","ttl":<数値>}` の形式 |
 
 **戻り値**
 
-複数行の標準出力をするので、`head`や`tail`で取得して使う。
+リストで `($body, $code)` を返す。
 
-| 行数 | 意味合い                            | 備考                                                              |
-| ---- | ----------------------------------- | ----------------------------------------------------------------- |
-| 1    | APIのレスポンスボディ(JSON)         | 一行の文字列で、改行コードは`\\n`としてエスケープされたものが来る |
-| 2    | APIのHTTPレスポンスステータスコード |                                                                   |
+| 変数名  | 意味合い                            |
+| ------- | ----------------------------------- |
+| `$body` | APIのレスポンスボディ(JSON文字列)   |
+| `$code` | APIのHTTPレスポンスステータスコード |
 
 **実装例**
 
-```bash
-json=$(
-  echo "$new_records" \
-    | jq -Rs \
-      --arg ns_type "$source_ns_type" \
-      --argjson ttl "$adjusted_ttl" \
-      '{"ns_type": $ns_type, "records": ., "ttl": $ttl}'
-)
-# ValueDomainAPIにレコードの更新要求を出す
-update_result=$(request_update_records "$apikey" "$root_domain" "$json")
+```perl
+use JSON::PP;
+my $json = encode_json({
+    ns_type => $source_ns_type,
+    records => $new_records,
+    ttl     => $adjusted_ttl,
+});
 
-update_respcode=$(echo -E "$update_result" | tail -1)
-update_respbody=$(echo -E "$update_result" | head -1)
-if [[ $update_respcode -ne 200 ]]; then
-  echo -e "CODE:$update_respcode\tDNSレコードの更新に失敗しました。"
-  echo "$update_respbody"
-  exit 11
-fi
+my ($update_body, $update_code) = request_update_records($apikey, $root_domain, $json);
+
+if ($update_code != 200) {
+    print STDERR "CODE:$update_code\tDNSレコードの更新に失敗しました。\n";
+    exit 11;
+}
 ```
 
-## [`./vd-dcr.sh`] Value-DomainでCertbotのDNS認証を自動化するためのツール
+## [`./vd-dcr.pl`] Value-DomainでCertbotのDNS認証を自動化するためのツール
 
-`./vd-dns-util.sh`を利用した実装サンプルでもある。
+`./vd-dns-util.pl`を利用した実装サンプルでもある。
 
 ### 動作確認環境
 
-- Ubuntu 24.04.3 LTS, certbot 2.9.0
-
-Claude Opus 4.6のレビューによるとFreeBSD系では動かない可能性があります。
+- Ubuntu 24.04.3 LTS, certbot 2.9.0, Perl 5.38
 
 ### 使い方
 
-1. certbotやjqがない場合インストールする
+1. certbotがない場合インストールする
    ```bash
-   sudo apt install certbot jq
+   sudo apt install certbot
    ```
 2. 本リポジトリの中身を任意の場所に展開し、適切な実行権限を付与する
+   ```bash
+   chmod +x /path/to/vd-dcr.pl
+   ```
 3. 証明書を作るためのコマンドを叩く
    ```bash
    sudo certbot certonly --manual -n \
      --preferred-challenges dns \
      --agree-tos -m <your-email> \
-     --manual-auth-hook "/path/to/vd-dcr.sh <value-domain-api-key> <root-domain> <optional:ttl>" \
+     --manual-auth-hook "/path/to/vd-dcr.pl <value-domain-api-key> <root-domain> <optional:ttl>" \
      -d <target-domain>
    ```
    **記述例**
@@ -231,7 +232,7 @@ Claude Opus 4.6のレビューによるとFreeBSD系では動かない可能性�
    sudo certbot certonly --manual -n \
      --preferred-challenges dns \
      --agree-tos -m postmaster@example.com \
-     --manual-auth-hook "/path/to/vd-dcr.sh x9FwKp3RmT7vLnYq2sUcBj6hXoDiA8gZeJrN4aMbQV5tWlCy0EdGuHfS1oIxP9wKmR7nTvLjYq3sUcBp6hXoZiD2gJeKr4aMbQkV example.com" \
+     --manual-auth-hook "/path/to/vd-dcr.pl x9FwKp3RmT7vLnYq2sUcBj6hXoDiA8gZeJrN4aMbQV5tWlCy0EdGuHfS1oIxP9wKmR7nTvLjYq3sUcBp6hXoZiD2gJeKr4aMbQkV example.com" \
      -d hoge.example.com
    ```
 
@@ -241,24 +242,11 @@ apt経由でインストールした場合、以降は勝手に自動更新が�
 
 `/etc/letsencrypt/renewal/*.conf`には、過去に実行した証明書更新用の設定が書き込まれており、態々毎回フルパラメーターを指定せずとも動くようになっているものと思われる。
 
+この辺りは`sudo certbot renew --no-random-sleep-on-renew`を実行するとわかる。
+
 ### 既知の問題
 
 1. ワイルドカードドメインに対応していない（それっぽいコードは書いているが、未検証）
-
-## test_vd-dns-util.bats
-
-テストファイル。
-
-### テストの実行方法
-
-1. Bash Automated Testing Systemのインストール
-   ```bash
-   sudo apt install bats
-   ```
-2. テストファイルの実行
-   ```bash
-   ./test_vd-dns-util.bats
-   ```
 
 ## ライセンス
 
